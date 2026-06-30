@@ -1,21 +1,21 @@
 {
-  "checked_at": "2026-06-30T21:05:17Z",
-  "t": 1782853517,
+  "checked_at": "2026-06-30T21:09:14Z",
+  "t": 1782853754,
   "window_sec": 60,
   "http": {
     "window_sec": 60,
     "chunks": 4,
-    "avg_mbps": 0.00,
-    "min_mbps": 0.00,
-    "median_mbps": 0,
+    "avg_mbps": 5.11,
+    "min_mbps": 5.06,
+    "median_mbps": 5.115,
     "stalls": 0
   },
   "socks5": {
     "window_sec": 60,
     "chunks": 4,
-    "avg_mbps": 0.00,
-    "min_mbps": 0.00,
-    "median_mbps": 0,
+    "avg_mbps": 5.05,
+    "min_mbps": 4.98,
+    "median_mbps": 5.055,
     "stalls": 0
   }
 }
