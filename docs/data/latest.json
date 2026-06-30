@@ -1,7 +1,31 @@
 {
-  "checked_at": null,
-  "t": 0,
-  "runner_ip": "",
-  "http": null,
-  "socks5": null
+  "checked_at": "2026-06-30T19:45:09Z",
+  "t": 1782848709,
+  "runner_ip": "172.184.134.209",
+  "http": {
+    "ok": true,
+    "exit_ip": "68.153.62.108",
+    "proxied": true,
+    "latency_ms": {
+      "connect": 74,
+      "ttfb": 968,
+      "total": 968
+    },
+    "download_mbps": 5.20,
+    "upload_mbps": 5.66,
+    "bytes": 10000000
+  },
+  "socks5": {
+    "ok": true,
+    "exit_ip": "68.153.62.57",
+    "proxied": true,
+    "latency_ms": {
+      "connect": 55,
+      "ttfb": 738,
+      "total": 740
+    },
+    "download_mbps": 5.15,
+    "upload_mbps": 4.18,
+    "bytes": 10000000
+  }
 }
