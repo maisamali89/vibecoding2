@@ -104,6 +104,59 @@ function renderIncidents(history) {
     return `<li><b>${i.p.toUpperCase()}</b> down — ${new Date(i.start * 1000).toLocaleString()} · ${dur}</li>`;
   }).join("");
 }
+
+// ---- exit IP rotation tracking -------------------------------------------
+// Groups consecutive checks with the same exit IP into a "held" segment.
+// Rotation time is approximate: we only know the IP changed sometime between
+// two checks (±cron interval), not the exact second it rotated.
+function ipSegments(history, proto) {
+  const rows = history.filter((r) => r.proto === proto && r.ip).sort((a, b) => a.t - b.t);
+  const segs = [];
+  for (const r of rows) {
+    const last = segs[segs.length - 1];
+    if (last && last.ip === r.ip) last.end = r.t;
+    else segs.push({ ip: r.ip, start: r.t, end: r.t });
+  }
+  return segs;
+}
+function fmtDuration(sec) {
+  if (sec == null) return "—";
+  const m = Math.round(sec / 60);
+  if (m < 60) return `${m}m`;
+  return `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+function renderIpRotation(history) {
+  for (const p of PROTOS) {
+    const segs = ipSegments(history, p);
+    const statsEl = $(`ip-stats-${p}`);
+    const logEl = $(`ip-log-${p}`);
+    if (!segs.length) {
+      statsEl.innerHTML = `<div><span>Exit IPs seen</span><b>—</b></div>`;
+      logEl.innerHTML = `<li class="muted">No exit-IP data yet.</li>`;
+      continue;
+    }
+    const nowS = Date.now() / 1000;
+    const current = segs[segs.length - 1];
+    const heldFor = nowS - current.start;
+    // average time between rotations, based on observed segment starts (excludes the current, possibly still-open, segment)
+    let avgRotation = null;
+    if (segs.length >= 2) {
+      const gaps = [];
+      for (let i = 1; i < segs.length; i++) gaps.push(segs[i].start - segs[i - 1].start);
+      avgRotation = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+    }
+    statsEl.innerHTML = [
+      ["Current exit IP", current.ip],
+      ["Held for", fmtDuration(heldFor)],
+      ["Avg rotation interval", segs.length >= 2 ? fmtDuration(avgRotation) : "need 2+ rotations"],
+      ["Rotations observed (30d)", segs.length - 1],
+    ].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
+    const recent = segs.slice(0, -1).slice(-10).reverse();
+    logEl.innerHTML = recent.length
+      ? recent.map((s) => `<li><span>${new Date(s.start * 1000).toLocaleString()}</span><b>${s.ip} · held ${fmtDuration(s.end - s.start)}</b></li>`).join("")
+      : `<li class="muted">No rotations observed yet — same IP since tracking began.</li>`;
+  }
+}
 function renderUsage(history) {
   const now = new Date();
   const dayKey = now.toISOString().slice(0, 10);
@@ -204,6 +257,7 @@ async function load() {
     renderUptime(history);
     renderTimeline(history);
     renderIncidents(history);
+    renderIpRotation(history);
     renderUsage(history);
     renderCharts(history);
     for (const k of ["session", "concurrency", "streaming"]) {

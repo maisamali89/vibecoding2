@@ -118,7 +118,7 @@ run_quick() {
     src=$([ "$p" = http ] && echo "$http" || echo "$socks")
     echo "$src" | jq -c --argjson t "$t" --arg proto "$p" \
       '{t:$t, proto:$proto, ok:.ok, ms:.latency_ms.total,
-        dl:.download_mbps, ul:.upload_mbps, bytes:.bytes}' \
+        dl:.download_mbps, ul:.upload_mbps, bytes:.bytes, ip:.exit_ip}' \
       >> "$DATA_DIR/history.jsonl"
   done
 

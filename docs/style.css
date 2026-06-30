@@ -107,6 +107,8 @@ section { margin-top: 16px; }
 .incidents { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 6px; }
 .incidents li { font-size: 13px; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25); border-radius: 8px; padding: 8px 10px; }
 .incidents li.muted, .muted { color: var(--muted); }
+.ip-log li { background: rgba(79,140,255,.08); border-color: rgba(79,140,255,.25); font-family: ui-monospace, monospace; display: flex; justify-content: space-between; gap: 10px; }
+.ip-log li span:first-child { font-family: ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
 .incidents li.muted { background: transparent; border: 1px dashed var(--border); }
 
 /* on-demand */

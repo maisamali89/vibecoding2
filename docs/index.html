@@ -92,6 +92,23 @@
       <ul class="incidents" id="incidents"><li class="muted">No incidents recorded.</li></ul>
     </section>
 
+    <!-- Exit IP rotation -->
+    <section class="card">
+      <div class="card-head"><h2>Exit IP rotation</h2><span class="hint">tracked from every check · ±check interval accuracy</span></div>
+      <div class="grid two">
+        <div>
+          <h3 class="tl-title">HTTP</h3>
+          <div class="rows" id="ip-stats-http"></div>
+          <ul class="incidents ip-log" id="ip-log-http"></ul>
+        </div>
+        <div>
+          <h3 class="tl-title">SOCKS5</h3>
+          <div class="rows" id="ip-stats-socks5"></div>
+          <ul class="incidents ip-log" id="ip-log-socks5"></ul>
+        </div>
+      </div>
+    </section>
+
     <!-- Speed charts -->
     <section class="grid two">
       <article class="card"><div class="card-head"><h2>Download speed</h2><span class="hint">Mbps over time</span></div><div class="chart-box"><canvas id="chart-dl"></canvas></div></article>
