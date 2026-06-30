@@ -40,7 +40,7 @@ SESSION_N="${SESSION_N:-10}"
 
 DOWN_URL="https://speed.cloudflare.com/__down?bytes=${DL_BYTES}"
 UP_URL="https://speed.cloudflare.com/__up"
-STREAM_URL="https://speed.cloudflare.com/__down?bytes=100000000"
+STREAM_URL="https://speed.cloudflare.com/__down?bytes=25000000"
 IP_URL="https://api.ipify.org"
 
 if [[ -z "${PROXY_HOST:-}" || -z "${PROXY_HTTP_PORT:-}" || -z "${PROXY_SOCKS_PORT:-}" \
@@ -206,11 +206,13 @@ measure_streaming() {
   chunks=$(( STREAM_SECONDS/CHUNK_SECONDS )); (( chunks<1 )) && chunks=1
   tmp="$(mktemp)"; codes="$(mktemp)"
   for ((i=0; i<chunks; i++)); do
-    w="$(curl -sS -o /dev/null -x "$purl" --max-time "$CHUNK_SECONDS" \
+    body="$(mktemp)"
+    w="$(curl -sS -o "$body" -x "$purl" --max-time "$CHUNK_SECONDS" \
             -w '%{speed_download} %{exitcode} %{http_code} %{size_download}' "$STREAM_URL" 2>/dev/null)"
     read -r spd ec hc sz <<<"${w:-0 -1 000 0}"
     echo "$(to_mbps "${spd:-0}")" >> "$tmp"
-    echo "$ec http=$hc bytes=$sz" >> "$codes"
+    echo "$ec http=$hc bytes=$sz body=[$(head -c 200 "$body" | tr -d '\n')]" >> "$codes"
+    rm -f "$body"
   done
   echo "streaming debug ($proto): $(tr '\n' ';' < "$codes")" >&2
   rm -f "$codes"
