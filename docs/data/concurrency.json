@@ -1,1 +1,17 @@
-{ "checked_at": null, "http": null, "socks5": null }
+{
+  "checked_at": "2026-06-30T20:25:22Z",
+  "t": 1782851122,
+  "sessions": 20,
+  "http": {
+    "sessions": 20,
+    "success": 0,
+    "aggregate_mbps": 0.00,
+    "per_session_mbps": 0
+  },
+  "socks5": {
+    "sessions": 20,
+    "success": 0,
+    "aggregate_mbps": 0.00,
+    "per_session_mbps": 0
+  }
+}
