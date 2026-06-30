@@ -1,1 +1,21 @@
-{ "checked_at": null, "http": null, "socks5": null }
+{
+  "checked_at": "2026-06-30T20:21:12Z",
+  "t": 1782850872,
+  "requests": 10,
+  "http": {
+    "requests": 10,
+    "success": 10,
+    "avg_ms": 451,
+    "min_ms": 398,
+    "max_ms": 716,
+    "unique_ips": 1
+  },
+  "socks5": {
+    "requests": 10,
+    "success": 10,
+    "avg_ms": 511,
+    "min_ms": 490,
+    "max_ms": 540,
+    "unique_ips": 1
+  }
+}
