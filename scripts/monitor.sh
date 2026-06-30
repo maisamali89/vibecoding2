@@ -40,7 +40,7 @@ SESSION_N="${SESSION_N:-10}"
 
 DOWN_URL="https://speed.cloudflare.com/__down?bytes=${DL_BYTES}"
 UP_URL="https://speed.cloudflare.com/__up"
-STREAM_URL="https://speed.cloudflare.com/__down?bytes=2000000000"
+STREAM_URL="https://speed.cloudflare.com/__down?bytes=100000000"
 IP_URL="https://api.ipify.org"
 
 if [[ -z "${PROXY_HOST:-}" || -z "${PROXY_HTTP_PORT:-}" || -z "${PROXY_SOCKS_PORT:-}" \
