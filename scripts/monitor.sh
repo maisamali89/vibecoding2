@@ -207,12 +207,12 @@ measure_streaming() {
   tmp="$(mktemp)"; codes="$(mktemp)"
   for ((i=0; i<chunks; i++)); do
     w="$(curl -sS -o /dev/null -x "$purl" --max-time "$CHUNK_SECONDS" \
-            -w '%{speed_download} %{exitcode}' "$STREAM_URL" 2>/dev/null)"
-    read -r spd ec <<<"${w:-0 -1}"
+            -w '%{speed_download} %{exitcode} %{http_code} %{size_download}' "$STREAM_URL" 2>/dev/null)"
+    read -r spd ec hc sz <<<"${w:-0 -1 000 0}"
     echo "$(to_mbps "${spd:-0}")" >> "$tmp"
-    echo "$ec" >> "$codes"
+    echo "$ec http=$hc bytes=$sz" >> "$codes"
   done
-  echo "streaming debug ($proto): $(sort "$codes" | uniq -c | tr '\n' ' ')" >&2
+  echo "streaming debug ($proto): $(tr '\n' ';' < "$codes")" >&2
   rm -f "$codes"
   local avg min stalls total_bytes
   avg="$(awk '{s+=$1} END{if(NR>0) printf "%.2f", s/NR; else print 0}' "$tmp")"
