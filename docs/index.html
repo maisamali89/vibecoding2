@@ -8,6 +8,20 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>" />
 </head>
 <body>
+  <div id="lock" class="lock">
+    <div class="lock-box">
+      <div class="lock-icon">🔒</div>
+      <h2>Protected</h2>
+      <p class="lock-sub">Enter the password to view this dashboard.</p>
+      <form id="lock-form">
+        <input type="password" id="lock-pass" placeholder="Password" autocomplete="current-password" autofocus />
+        <button type="submit" class="btn">Unlock</button>
+      </form>
+      <p class="lock-error" id="lock-error"></p>
+    </div>
+  </div>
+
+  <div id="app" hidden>
   <header class="topbar">
     <div class="brand">
       <span class="logo">📡</span>
@@ -114,8 +128,10 @@
       <span>Measured independently via GitHub Actions · not affiliated with the proxy provider's portal figures.</span>
     </footer>
   </main>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="app.js"></script>
+  <script src="lock.js"></script>
 </body>
 </html>

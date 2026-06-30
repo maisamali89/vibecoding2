@@ -29,8 +29,19 @@ jobs:
       PROXY_SOCKS_PORT: ${{ secrets.PROXY_SOCKS_PORT }}
       PROXY_USER: ${{ secrets.PROXY_USER }}
       PROXY_PASS: ${{ secrets.PROXY_PASS }}
+      PAGE_PASSWORD: ${{ secrets.PAGE_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Generate page lock hash
+        run: |
+          mkdir -p docs/data
+          if [ -n "$PAGE_PASSWORD" ]; then
+            hash=$(printf '%s' "$PAGE_PASSWORD" | sha256sum | cut -d' ' -f1)
+            printf '{"hash":"%s"}\n' "$hash" > docs/data/lock-hash.json
+          else
+            printf '{"hash":null}\n' > docs/data/lock-hash.json
+          fi
 
       - name: Run proxy test (${{ github.event.inputs.test_type || 'quick' }})
         run: bash scripts/monitor.sh "${{ github.event.inputs.test_type || 'quick' }}"

@@ -215,5 +215,12 @@ async function load() {
     $("updated").textContent = "Error loading data";
   }
 }
-load();
-setInterval(load, REFRESH_MS);
+
+// Started by lock.js once the password gate is passed (no data is fetched before then).
+let started = false;
+window.startDashboard = function () {
+  if (started) return;
+  started = true;
+  load();
+  setInterval(load, REFRESH_MS);
+};
