@@ -23,6 +23,9 @@ permissions:
 jobs:
   monitor:
     runs-on: ubuntu-latest
+    # Worst-case legitimate runs (slow proxy, full timeouts on both protocols) take a few
+    # minutes; this just stops a genuine hang from blocking cron checks indefinitely.
+    timeout-minutes: 15
     env:
       PROXY_HOST: ${{ secrets.PROXY_HOST }}
       PROXY_HTTP_PORT: ${{ secrets.PROXY_HTTP_PORT }}
