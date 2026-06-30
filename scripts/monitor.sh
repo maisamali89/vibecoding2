@@ -172,12 +172,13 @@ measure_concurrency() {
   export CC_PURL="$purl" CC_URL="https://speed.cloudflare.com/__down?bytes=${CONC_BYTES}" CC_T="$SPEED_TIMEOUT"
   seq "$CONC_N" | xargs -P "$CONC_N" -I {} sh -c '
     out="$(curl -sS -o /dev/null -x "$CC_PURL" --max-time "$CC_T" \
-      -w "%{http_code} %{speed_download}" "$CC_URL" 2>/dev/null)"
-    echo "${out:-000 0}"
+      -w "%{http_code} %{speed_download} %{exitcode}" "$CC_URL" 2>/dev/null)"
+    echo "${out:-000 0 -1}"
   ' > "$tmp"
   ok="$(grep -c '^200 ' "$tmp" || true)"
   agg="$(awk '{s+=$2} END{printf "%.2f", (s*8)/1e6}' "$tmp")"
   per="$(awk -v ok="$ok" '$1=="200"{s+=$2} END{if(ok>0) printf "%.2f", (s*8)/1e6/ok; else print 0}' "$tmp")"
+  echo "concurrency debug ($proto): $(awk '$1!="200"{print "curl_exit="$3}' "$tmp" | sort | uniq -c | tr '\n' ' ')" >&2
   rm -f "$tmp"
   jq -n --argjson n "$CONC_N" --argjson ok "${ok:-0}" \
     --arg agg "$agg" --arg per "$per" \
@@ -195,15 +196,19 @@ run_concurrency() {
 # ---------------------------------------------------------------- streaming
 # Sustained pull split into ~5s chunks; flag chunks below 50% of the median as stalls.
 measure_streaming() {
-  local proto="$1" purl chunks i rc rates=() tmp
+  local proto="$1" purl chunks i rc rates=() tmp codes
   purl="$(proxy_url "$proto")"
   chunks=$(( STREAM_SECONDS/5 )); (( chunks<1 )) && chunks=1
-  tmp="$(mktemp)"
+  tmp="$(mktemp)"; codes="$(mktemp)"
   for ((i=0; i<chunks; i++)); do
-    spd="$(curl -sS -o /dev/null -x "$purl" --max-time 6 \
-            -w '%{speed_download}' "$STREAM_URL" 2>/dev/null || echo 0)"
-    echo "$(to_mbps "$spd")" >> "$tmp"
+    w="$(curl -sS -o /dev/null -x "$purl" --max-time 6 \
+            -w '%{speed_download} %{exitcode}' "$STREAM_URL" 2>/dev/null)"
+    read -r spd ec <<<"${w:-0 -1}"
+    echo "$(to_mbps "${spd:-0}")" >> "$tmp"
+    echo "$ec" >> "$codes"
   done
+  echo "streaming debug ($proto): $(sort "$codes" | uniq -c | tr '\n' ' ')" >&2
+  rm -f "$codes"
   local avg min stalls total_bytes
   avg="$(awk '{s+=$1} END{if(NR>0) printf "%.2f", s/NR; else print 0}' "$tmp")"
   min="$(sort -n "$tmp" | head -n1)"
