@@ -1,17 +1,17 @@
 {
-  "checked_at": "2026-06-30T20:25:22Z",
-  "t": 1782851122,
+  "checked_at": "2026-06-30T20:48:47Z",
+  "t": 1782852527,
   "sessions": 20,
   "http": {
     "sessions": 20,
-    "success": 0,
-    "aggregate_mbps": 0.00,
-    "per_session_mbps": 0
+    "success": 20,
+    "aggregate_mbps": 5.57,
+    "per_session_mbps": 0.28
   },
   "socks5": {
     "sessions": 20,
-    "success": 0,
-    "aggregate_mbps": 0.00,
-    "per_session_mbps": 0
+    "success": 20,
+    "aggregate_mbps": 5.46,
+    "per_session_mbps": 0.27
   }
 }
