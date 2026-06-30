@@ -21,6 +21,7 @@
 #   DL_BYTES/UL_BYTES quick speed sizes (default 8MB / 2MB)
 #   CONC_N            concurrency sessions (default 20)
 #   STREAM_SECONDS    streaming window sec (default 60)
+#   CHUNK_SECONDS     per-chunk timeout within the streaming window (default 15)
 
 set -uo pipefail
 
@@ -34,6 +35,7 @@ UL_BYTES="${UL_BYTES:-2000000}"
 CONC_N="${CONC_N:-20}"
 CONC_BYTES="${CONC_BYTES:-3000000}"
 STREAM_SECONDS="${STREAM_SECONDS:-60}"
+CHUNK_SECONDS="${CHUNK_SECONDS:-15}"
 SESSION_N="${SESSION_N:-10}"
 
 DOWN_URL="https://speed.cloudflare.com/__down?bytes=${DL_BYTES}"
@@ -194,14 +196,17 @@ run_concurrency() {
 }
 
 # ---------------------------------------------------------------- streaming
-# Sustained pull split into ~5s chunks; flag chunks below 50% of the median as stalls.
+# Sustained pull split into CHUNK_SECONDS-long chunks; flag chunks below 50% of the
+# median as stalls. Each chunk needs enough headroom past connect/TLS overhead to
+# show real throughput - too short a chunk (e.g. 5-6s) on a slow proxy means most
+# of the window is connection setup, so it reports ~0 Mbps even on success.
 measure_streaming() {
   local proto="$1" purl chunks i rc rates=() tmp codes
   purl="$(proxy_url "$proto")"
-  chunks=$(( STREAM_SECONDS/5 )); (( chunks<1 )) && chunks=1
+  chunks=$(( STREAM_SECONDS/CHUNK_SECONDS )); (( chunks<1 )) && chunks=1
   tmp="$(mktemp)"; codes="$(mktemp)"
   for ((i=0; i<chunks; i++)); do
-    w="$(curl -sS -o /dev/null -x "$purl" --max-time 6 \
+    w="$(curl -sS -o /dev/null -x "$purl" --max-time "$CHUNK_SECONDS" \
             -w '%{speed_download} %{exitcode}' "$STREAM_URL" 2>/dev/null)"
     read -r spd ec <<<"${w:-0 -1}"
     echo "$(to_mbps "${spd:-0}")" >> "$tmp"
