@@ -1,6 +1,6 @@
-# TurboProxy Uptime Monitor
+# Proxy Uptime Monitor
 
-A tiny, **backend-free** uptime & performance monitor for TurboProxy's **HTTP** and **SOCKS5**
+A tiny, **backend-free** uptime & performance monitor for a proxy's **HTTP** and **SOCKS5**
 gateways. Everything runs on **GitHub Actions** (free) and a **static GitHub Pages** dashboard —
 no server, no database, no paid API.
 
@@ -14,8 +14,9 @@ It routes real `curl` traffic *through* each proxy (separately) and measures:
 
 > **Honest limits.** GitHub cron has a 5-minute floor and is best-effort, so "live" means
 > *last measured, auto-refreshed ~every few minutes* — not a continuous meter. Portal figures
-> (Sessions, Connections, Assigned Proxies, portal "Today Usage") live inside TurboProxy and need
-> its login/API; this dashboard shows **independently measured** equivalents only.
+> (Sessions, Connections, Assigned Proxies, portal "Today Usage") live inside the proxy provider's
+> own customer portal and need its login/API; this dashboard shows **independently measured**
+> equivalents only.
 
 ---
 
@@ -46,11 +47,14 @@ You must do these — they can't be automated from here:
 2. **Add repository secrets** — Settings → Secrets and variables → Actions → *New repository secret*:
    | Secret | Value |
    |---|---|
-   | `PROXY_USER` | your proxy username (e.g. `maistest017685`) |
+   | `PROXY_HOST` | your proxy hostname (e.g. `proxy.example.com`) |
+   | `PROXY_HTTP_PORT` | your HTTP proxy port |
+   | `PROXY_SOCKS_PORT` | your SOCKS5 proxy port |
+   | `PROXY_USER` | your proxy username |
    | `PROXY_PASS` | your proxy password |
 
-   Host/ports are **not** secret and live in the workflow (`proxy.fidobox.us`, `10000`, `10001`).
-   Change them there if your gateway differs.
+   Nothing proxy-identifying is committed to the repo — host, ports, and credentials all live
+   in secrets and are only ever read inside the workflow run.
 
 3. **Enable GitHub Pages** — Settings → Pages → *Deploy from a branch* → branch
    `claude/turboproxy-uptime-monitor-bgqjwe` (or `main` after merge), folder `/docs`.
@@ -86,7 +90,7 @@ Tune sizes/counts via env in `.github/workflows/monitor.yml` (e.g. `CONC_N`, `ST
 ## Local testing
 
 ```bash
-export PROXY_USER=... PROXY_PASS=...
+export PROXY_HOST=... PROXY_HTTP_PORT=... PROXY_SOCKS_PORT=... PROXY_USER=... PROXY_PASS=...
 bash scripts/monitor.sh quick      # writes docs/data/latest.json + appends history.jsonl
 ```
 

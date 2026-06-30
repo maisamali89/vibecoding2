@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TurboProxy uptime / performance monitor.
+# Proxy uptime / performance monitor.
 #
 # Runs curl-based tests THROUGH the HTTP and SOCKS5 proxies (separately) and
 # writes JSON results into $DATA_DIR for the static dashboard to read.
@@ -10,10 +10,10 @@
 #   concurrency  N parallel sessions, success rate + agg.   (on-demand)
 #   streaming    sustained pull, avg Mbps + stall count     (on-demand)
 #
-# Config via env (all optional except creds):
-#   PROXY_HOST        default: proxy.fidobox.us
-#   PROXY_HTTP_PORT   default: 10000
-#   PROXY_SOCKS_PORT  default: 10001
+# Config via env:
+#   PROXY_HOST        required (e.g. proxy.example.com)
+#   PROXY_HTTP_PORT   required
+#   PROXY_SOCKS_PORT  required
 #   PROXY_USER        required
 #   PROXY_PASS        required
 #   DATA_DIR          default: docs/data
@@ -26,9 +26,6 @@ set -uo pipefail
 
 MODE="${1:-quick}"
 
-PROXY_HOST="${PROXY_HOST:-proxy.fidobox.us}"
-PROXY_HTTP_PORT="${PROXY_HTTP_PORT:-10000}"
-PROXY_SOCKS_PORT="${PROXY_SOCKS_PORT:-10001}"
 DATA_DIR="${DATA_DIR:-docs/data}"
 TIMEOUT="${TIMEOUT:-20}"
 SPEED_TIMEOUT="${SPEED_TIMEOUT:-90}"
@@ -44,8 +41,9 @@ UP_URL="https://speed.cloudflare.com/__up"
 STREAM_URL="https://speed.cloudflare.com/__down?bytes=2000000000"
 IP_URL="https://api.ipify.org"
 
-if [[ -z "${PROXY_USER:-}" || -z "${PROXY_PASS:-}" ]]; then
-  echo "ERROR: PROXY_USER and PROXY_PASS must be set" >&2
+if [[ -z "${PROXY_HOST:-}" || -z "${PROXY_HTTP_PORT:-}" || -z "${PROXY_SOCKS_PORT:-}" \
+      || -z "${PROXY_USER:-}" || -z "${PROXY_PASS:-}" ]]; then
+  echo "ERROR: PROXY_HOST, PROXY_HTTP_PORT, PROXY_SOCKS_PORT, PROXY_USER and PROXY_PASS must all be set" >&2
   exit 1
 fi
 

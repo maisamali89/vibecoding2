@@ -55,7 +55,6 @@ section { margin-top: 16px; }
 .hint, .desc { color: var(--muted); font-size: 12.5px; }
 
 /* status cards */
-.status .endpoint { color: var(--muted); font-family: ui-monospace, monospace; font-size: 13px; margin-bottom: 14px; }
 .badge {
   font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
   background: #2a3358; color: var(--muted); text-transform: uppercase; letter-spacing: .4px;

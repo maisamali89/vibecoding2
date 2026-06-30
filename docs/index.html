@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TurboProxy Uptime Monitor</title>
+  <title>Proxy Uptime Monitor</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>" />
 </head>
@@ -12,7 +12,7 @@
     <div class="brand">
       <span class="logo">📡</span>
       <div>
-        <h1>TurboProxy Monitor</h1>
+        <h1>Proxy Monitor</h1>
         <p class="sub">HTTP &amp; SOCKS5 — independent uptime &amp; performance</p>
       </div>
     </div>
@@ -30,7 +30,6 @@
           <h2>HTTP Proxy</h2>
           <span class="badge" id="http-badge">—</span>
         </div>
-        <div class="endpoint" id="http-endpoint">proxy.fidobox.us:10000</div>
         <div class="metrics">
           <div class="metric"><span class="label">Download</span><span class="value" id="http-dl">—</span><span class="unit">Mbps</span></div>
           <div class="metric"><span class="label">Upload</span><span class="value" id="http-ul">—</span><span class="unit">Mbps</span></div>
@@ -48,7 +47,6 @@
           <h2>SOCKS5 Proxy</h2>
           <span class="badge" id="socks5-badge">—</span>
         </div>
-        <div class="endpoint" id="socks5-endpoint">proxy.fidobox.us:10001</div>
         <div class="metrics">
           <div class="metric"><span class="label">Download</span><span class="value" id="socks5-dl">—</span><span class="unit">Mbps</span></div>
           <div class="metric"><span class="label">Upload</span><span class="value" id="socks5-ul">—</span><span class="unit">Mbps</span></div>
@@ -113,7 +111,7 @@
     </section>
 
     <footer>
-      <span>Measured independently via GitHub Actions · not affiliated with TurboProxy portal figures.</span>
+      <span>Measured independently via GitHub Actions · not affiliated with the proxy provider's portal figures.</span>
     </footer>
   </main>
 
