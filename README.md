@@ -52,15 +52,30 @@ You must do these — they can't be automated from here:
    | `PROXY_SOCKS_PORT` | your SOCKS5 proxy port |
    | `PROXY_USER` | your proxy username |
    | `PROXY_PASS` | your proxy password |
+   | `PAGE_PASSWORD` | the password to view the dashboard |
 
    Nothing proxy-identifying is committed to the repo — host, ports, and credentials all live
-   in secrets and are only ever read inside the workflow run.
+   in secrets and are only ever read inside the workflow run. `PAGE_PASSWORD`'s plaintext is
+   never committed either — the workflow turns it into a SHA-256 hash (`docs/data/lock-hash.json`)
+   that the page compares against client-side.
+
+   > **Limitation, please read.** GitHub Pages serves every file in `docs/` publicly with no
+   > per-file access control. This password gate hides the dashboard *UI* from casual visitors
+   > and search engines, but someone who knows/guesses a path like `.../data/latest.json` can
+   > still fetch the raw measured data directly — the lock can't intercept that on static
+   > hosting. Your proxy credentials are never exposed either way (they only ever live in
+   > secrets/Actions). If you need the *data* itself to be private, that requires either a
+   > private repo on a paid GitHub plan (Pages on private repos isn't on the free tier) or a
+   > small authenticated backend — both go beyond the "free, no backend" goal of this project.
 
 3. **Enable GitHub Pages** — Settings → Pages → *Deploy from a branch* → branch
    `claude/turboproxy-uptime-monitor-bgqjwe` (or `main` after merge), folder `/docs`.
 
 4. **Seed the data** — Actions tab → *Proxy Monitor* → *Run workflow* → `quick`.
-   After it finishes, open your Pages URL.
+   After it finishes, open your Pages URL and enter the password.
+
+   If you ever change `PAGE_PASSWORD`, re-run the workflow once to refresh the hash —
+   until then the old password keeps working.
 
 5. **(Optional) edit `REPO` in `docs/app.js`** if the repo path changes — it's only used for the
    on-demand "Run workflow" deep links.
