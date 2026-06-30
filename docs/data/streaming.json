@@ -1,10 +1,10 @@
 {
-  "checked_at": "2026-06-30T20:53:49Z",
-  "t": 1782852829,
+  "checked_at": "2026-06-30T20:58:59Z",
+  "t": 1782853139,
   "window_sec": 60,
   "http": {
     "window_sec": 60,
-    "chunks": 12,
+    "chunks": 4,
     "avg_mbps": 0.00,
     "min_mbps": 0.00,
     "median_mbps": 0,
@@ -12,7 +12,7 @@
   },
   "socks5": {
     "window_sec": 60,
-    "chunks": 12,
+    "chunks": 4,
     "avg_mbps": 0.00,
     "min_mbps": 0.00,
     "median_mbps": 0,
