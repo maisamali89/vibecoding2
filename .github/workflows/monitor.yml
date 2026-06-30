@@ -1,0 +1,53 @@
+name: Proxy Monitor
+
+on:
+  schedule:
+    # ~every 10 min, offset from the top of the hour (GitHub cron is best-effort).
+    - cron: "7,17,27,37,47,57 * * * *"
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: "Which test to run"
+        type: choice
+        default: quick
+        options: [quick, session, concurrency, streaming]
+
+# Avoid overlapping runs racing on the same data files / git push.
+concurrency:
+  group: proxy-monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    env:
+      PROXY_HOST: proxy.fidobox.us
+      PROXY_HTTP_PORT: "10000"
+      PROXY_SOCKS_PORT: "10001"
+      PROXY_USER: ${{ secrets.PROXY_USER }}
+      PROXY_PASS: ${{ secrets.PROXY_PASS }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run proxy test (${{ github.event.inputs.test_type || 'quick' }})
+        run: bash scripts/monitor.sh "${{ github.event.inputs.test_type || 'quick' }}"
+
+      - name: Commit results
+        run: |
+          git config user.name  "proxy-monitor[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/data
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "monitor: ${{ github.event.inputs.test_type || 'quick' }} @ $(date -u +%FT%TZ)"
+            # Rebase onto any concurrent commits before pushing.
+            for i in 1 2 3 4; do
+              git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+              git push origin "HEAD:${GITHUB_REF_NAME}" && break
+              echo "push retry $i"; sleep $((2**i))
+            done
+          fi

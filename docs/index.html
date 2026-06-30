@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TurboProxy Uptime Monitor</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">📡</span>
+      <div>
+        <h1>TurboProxy Monitor</h1>
+        <p class="sub">HTTP &amp; SOCKS5 — independent uptime &amp; performance</p>
+      </div>
+    </div>
+    <div class="updated">
+      <span id="updated">Loading…</span>
+      <button id="refresh" class="btn ghost" title="Reload data">↻ Refresh</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Live status: HTTP vs SOCKS5, fully separate -->
+    <section class="grid two">
+      <article class="card status" id="card-http">
+        <div class="card-head">
+          <h2>HTTP Proxy</h2>
+          <span class="badge" id="http-badge">—</span>
+        </div>
+        <div class="endpoint" id="http-endpoint">proxy.fidobox.us:10000</div>
+        <div class="metrics">
+          <div class="metric"><span class="label">Download</span><span class="value" id="http-dl">—</span><span class="unit">Mbps</span></div>
+          <div class="metric"><span class="label">Upload</span><span class="value" id="http-ul">—</span><span class="unit">Mbps</span></div>
+          <div class="metric"><span class="label">Latency</span><span class="value" id="http-lat">—</span><span class="unit">ms</span></div>
+        </div>
+        <div class="rows">
+          <div><span>Exit IP</span><b id="http-ip">—</b></div>
+          <div><span>Routed via proxy</span><b id="http-proxied">—</b></div>
+        </div>
+        <div class="uptime" id="http-uptime"></div>
+      </article>
+
+      <article class="card status" id="card-socks5">
+        <div class="card-head">
+          <h2>SOCKS5 Proxy</h2>
+          <span class="badge" id="socks5-badge">—</span>
+        </div>
+        <div class="endpoint" id="socks5-endpoint">proxy.fidobox.us:10001</div>
+        <div class="metrics">
+          <div class="metric"><span class="label">Download</span><span class="value" id="socks5-dl">—</span><span class="unit">Mbps</span></div>
+          <div class="metric"><span class="label">Upload</span><span class="value" id="socks5-ul">—</span><span class="unit">Mbps</span></div>
+          <div class="metric"><span class="label">Latency</span><span class="value" id="socks5-lat">—</span><span class="unit">ms</span></div>
+        </div>
+        <div class="rows">
+          <div><span>Exit IP</span><b id="socks5-ip">—</b></div>
+          <div><span>Routed via proxy</span><b id="socks5-proxied">—</b></div>
+        </div>
+        <div class="uptime" id="socks5-uptime"></div>
+      </article>
+    </section>
+
+    <!-- Summary cards -->
+    <section class="grid four">
+      <article class="card mini"><span class="mini-label">Today (test data used)</span><span class="mini-value" id="today-usage">—</span><span class="mini-sub" id="today-split"></span></article>
+      <article class="card mini"><span class="mini-label">This Month</span><span class="mini-value" id="month-usage">—</span><span class="mini-sub" id="month-split"></span></article>
+      <article class="card mini"><span class="mini-label">Checks (30d)</span><span class="mini-value" id="checks-count">—</span><span class="mini-sub">monitor runs</span></article>
+      <article class="card mini"><span class="mini-label">Bandwidth cap</span><span class="mini-value">5</span><span class="mini-sub">Mbps (plan limit)</span></article>
+    </section>
+
+    <!-- Downtime history -->
+    <section class="card">
+      <div class="card-head"><h2>Downtime history</h2><span class="hint">last 30 days · each cell = one check</span></div>
+      <div class="legend"><span class="dot up"></span>up <span class="dot down"></span>down <span class="dot none"></span>no data</div>
+      <h3 class="tl-title">HTTP</h3><div class="timeline" id="tl-http"></div>
+      <h3 class="tl-title">SOCKS5</h3><div class="timeline" id="tl-socks5"></div>
+      <h3 class="tl-title">Incidents</h3>
+      <ul class="incidents" id="incidents"><li class="muted">No incidents recorded.</li></ul>
+    </section>
+
+    <!-- Speed charts -->
+    <section class="grid two">
+      <article class="card"><div class="card-head"><h2>Download speed</h2><span class="hint">Mbps over time</span></div><canvas id="chart-dl" height="180"></canvas></article>
+      <article class="card"><div class="card-head"><h2>Upload speed</h2><span class="hint">Mbps over time</span></div><canvas id="chart-ul" height="180"></canvas></article>
+    </section>
+
+    <!-- On-demand tests -->
+    <section class="card">
+      <div class="card-head"><h2>On-demand tests</h2><span class="hint">click Run → GitHub runs it → results appear here in ~1 min</span></div>
+      <div class="grid three">
+        <article class="card sub" id="t-session">
+          <h3>Session test</h3>
+          <p class="desc">N sequential requests — success rate, latency, exit-IP stability.</p>
+          <div class="result" id="res-session"><span class="muted">No run yet.</span></div>
+          <a class="btn run" data-test="session" target="_blank" rel="noopener">▶ Run session test</a>
+        </article>
+        <article class="card sub" id="t-concurrency">
+          <h3>Concurrency test</h3>
+          <p class="desc">N parallel sessions — success rate, aggregate &amp; per-session throughput.</p>
+          <div class="result" id="res-concurrency"><span class="muted">No run yet.</span></div>
+          <a class="btn run" data-test="concurrency" target="_blank" rel="noopener">▶ Run concurrency test</a>
+        </article>
+        <article class="card sub" id="t-streaming">
+          <h3>Streaming / video test</h3>
+          <p class="desc">Sustained pull — avg/min Mbps and stall (buffering) count.</p>
+          <div class="result" id="res-streaming"><span class="muted">No run yet.</span></div>
+          <a class="btn run" data-test="streaming" target="_blank" rel="noopener">▶ Run streaming test</a>
+        </article>
+      </div>
+      <p class="note">On-demand tests open GitHub's “Run workflow” page (a public page can't trigger a run without exposing a secret). Pick the matching test type and click <b>Run workflow</b>.</p>
+    </section>
+
+    <footer>
+      <span>Measured independently via GitHub Actions · not affiliated with TurboProxy portal figures.</span>
+    </footer>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
