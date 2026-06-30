@@ -1,1 +1,21 @@
-{ "checked_at": null, "http": null, "socks5": null }
+{
+  "checked_at": "2026-06-30T20:26:49Z",
+  "t": 1782851209,
+  "window_sec": 60,
+  "http": {
+    "window_sec": 60,
+    "chunks": 12,
+    "avg_mbps": 0.00,
+    "min_mbps": 0.00,
+    "median_mbps": 0,
+    "stalls": 0
+  },
+  "socks5": {
+    "window_sec": 60,
+    "chunks": 12,
+    "avg_mbps": 0.00,
+    "min_mbps": 0.00,
+    "median_mbps": 0,
+    "stalls": 0
+  }
+}
