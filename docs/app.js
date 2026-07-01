@@ -2,7 +2,7 @@
 // Set this to your backend's public URL (e.g. the Tailscale Funnel address
 // printed when you run it — see backend/README.md). Must be reachable over
 // HTTPS from the browser.
-const API_BASE = "https://REPLACE-WITH-YOUR-TAILSCALE-FUNNEL-URL";
+const API_BASE = "https://prom-vm.taildd556.ts.net";
 const PROTOS = ["http", "socks5"];
 const REFRESH_MS = 10000; // how often the dashboard polls the backend (ms)
 
