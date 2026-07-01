@@ -1,14 +1,15 @@
-// ---- config -------------------------------------------------------------
-// Used only for the on-demand "Run workflow" deep links.
-const REPO = "maisamali89/vibecoding2";
-const WORKFLOW = "monitor.yml";
-const RUN_URL = `https://github.com/${REPO}/actions/workflows/${WORKFLOW}`;
+// ---- config ---------------------------------------------------------------
+// Set this to your backend's public URL (e.g. the Tailscale Funnel address
+// printed when you run it — see backend/README.md). Must be reachable over
+// HTTPS from the browser.
+const API_BASE = "https://REPLACE-WITH-YOUR-TAILSCALE-FUNNEL-URL";
 const PROTOS = ["http", "socks5"];
-const REFRESH_MS = 60000;
+const REFRESH_MS = 10000; // how often the dashboard polls the backend (ms)
 
-// ---- helpers ------------------------------------------------------------
+// ---- helpers ----------------------------------------------------------------
 const $ = (id) => document.getElementById(id);
 const num = (v, d = 2) => (v == null ? "—" : Number(v).toFixed(d));
+const TOKEN_KEY = "proxy-monitor-token";
 
 function fmtBytes(b) {
   if (!b) return "0 B";
@@ -24,24 +25,30 @@ function ago(ts) {
   if (s < 86400) return Math.floor(s / 3600) + "h ago";
   return Math.floor(s / 86400) + "d ago";
 }
-async function getJSON(path) {
-  const r = await fetch(path + "?_=" + Date.now(), { cache: "no-store" });
+function fmtDuration(sec) {
+  if (sec == null) return "—";
+  const m = Math.round(sec / 60);
+  if (m < 60) return `${m}m`;
+  return `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+function authHeaders() {
+  const token = sessionStorage.getItem(TOKEN_KEY);
+  return token ? { Authorization: "Bearer " + token } : {};
+}
+async function apiGet(path) {
+  const r = await fetch(API_BASE + path, { headers: authHeaders(), cache: "no-store" });
   if (!r.ok) throw new Error(path + " " + r.status);
   return r.json();
 }
-async function getLines(path) {
-  const r = await fetch(path + "?_=" + Date.now(), { cache: "no-store" });
-  if (!r.ok) return [];
-  const txt = await r.text();
-  return txt.split("\n").filter(Boolean).map((l) => {
-    try { return JSON.parse(l); } catch { return null; }
-  }).filter(Boolean);
+async function apiPost(path) {
+  const r = await fetch(API_BASE + path, { method: "POST", headers: authHeaders() });
+  return r.json(); // backend returns a body even on 429 (cooldown) / errors
 }
 
-// ---- live status --------------------------------------------------------
+// ---- live status ------------------------------------------------------------
 function renderStatus(latest) {
   $("updated").textContent =
-    latest && latest.t ? `Updated ${ago(latest.t)}` : "Awaiting first run";
+    latest && latest.t ? `Updated ${ago(latest.t)}` : "Awaiting first check";
   for (const p of PROTOS) {
     const d = latest ? latest[p] : null;
     const badge = $(`${p}-badge`);
@@ -60,23 +67,60 @@ function renderStatus(latest) {
   }
 }
 
-// ---- uptime % + timeline + incidents + usage ---------------------------
-function pct(rows) {
-  if (!rows.length) return null;
-  return (100 * rows.filter((r) => r.ok).length) / rows.length;
-}
-function renderUptime(history) {
-  const nowS = Date.now() / 1000;
-  const wins = [["24h", 86400], ["7d", 604800], ["30d", 2592000]];
+// ---- uptime %, incidents, ip rotation, usage --------------------------------
+// All computed server-side now (backend/server.js buildSummary()) since the
+// full check history is far too large to ship to the browser every 10s at
+// this cadence — the summary payload stays small regardless of history size.
+function renderUptime(summary) {
+  const wins = [["24h", "24h"], ["7d", "7d"], ["30d", "30d"]];
   for (const p of PROTOS) {
-    const rows = history.filter((r) => r.proto === p);
-    const box = $(`${p}-uptime`);
-    box.innerHTML = wins.map(([label, secs]) => {
-      const v = pct(rows.filter((r) => r.t >= nowS - secs));
+    const u = summary.uptime[p] || {};
+    $(`${p}-uptime`).innerHTML = wins.map(([label, key]) => {
+      const v = u[key];
       return `<div class="u"><div class="pct">${v == null ? "—" : v.toFixed(2) + "%"}</div><div class="win">${label}</div></div>`;
     }).join("");
   }
 }
+function renderIncidents(summary) {
+  const list = summary.incidents || [];
+  const el = $("incidents");
+  if (!list.length) { el.innerHTML = `<li class="muted">No downtime recorded. 🎉</li>`; return; }
+  el.innerHTML = list.map((i) => {
+    const dur = i.end ? fmtDuration(i.end - i.start) : "ongoing";
+    return `<li><b>${i.proto.toUpperCase()}</b> down — ${new Date(i.start * 1000).toLocaleString()} · ${dur}</li>`;
+  }).join("");
+}
+function renderIpRotation(summary) {
+  for (const p of PROTOS) {
+    const r = summary.ip_rotation[p];
+    const statsEl = $(`ip-stats-${p}`);
+    const logEl = $(`ip-log-${p}`);
+    if (!r || !r.current_ip) {
+      statsEl.innerHTML = `<div><span>Exit IPs seen</span><b>—</b></div>`;
+      logEl.innerHTML = `<li class="muted">No exit-IP data yet.</li>`;
+      continue;
+    }
+    statsEl.innerHTML = [
+      ["Current exit IP", r.current_ip],
+      ["Held for", fmtDuration(r.held_for_sec)],
+      ["Avg rotation interval", r.avg_rotation_sec != null ? fmtDuration(r.avg_rotation_sec) : "need 2+ rotations"],
+      ["Rotations observed", r.rotations_observed],
+    ].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
+    logEl.innerHTML = r.log.length
+      ? r.log.map((s) => `<li><span>${new Date(s.start * 1000).toLocaleString()}</span><b>${s.ip} · held ${fmtDuration(s.held_sec)}</b></li>`).join("")
+      : `<li class="muted">No rotations observed yet — same IP since tracking began.</li>`;
+  }
+}
+function renderUsage(summary) {
+  const u = summary.usage;
+  $("today-usage").textContent = fmtBytes(u.today_bytes);
+  $("today-split").textContent = `${u.today_checks} checks`;
+  $("month-usage").textContent = fmtBytes(u.month_bytes);
+  $("month-split").textContent = `${u.month_checks} checks`;
+  $("checks-count").textContent = Math.round(u.checks_total);
+}
+
+// ---- downtime timeline (still needs raw per-check rows) --------------------
 function renderTimeline(history) {
   for (const p of PROTOS) {
     const rows = history.filter((r) => r.proto === p).slice(-160);
@@ -85,99 +129,10 @@ function renderTimeline(history) {
       : `<span class="muted">No checks yet.</span>`;
   }
 }
-function renderIncidents(history) {
-  const list = [];
-  for (const p of PROTOS) {
-    const rows = history.filter((r) => r.proto === p).sort((a, b) => a.t - b.t);
-    let start = null;
-    for (let i = 0; i < rows.length; i++) {
-      if (!rows[i].ok && start == null) start = rows[i].t;
-      if (rows[i].ok && start != null) { list.push({ p, start, end: rows[i].t }); start = null; }
-    }
-    if (start != null) list.push({ p, start, end: null });
-  }
-  list.sort((a, b) => b.start - a.start);
-  const el = $("incidents");
-  if (!list.length) { el.innerHTML = `<li class="muted">No downtime recorded. 🎉</li>`; return; }
-  el.innerHTML = list.slice(0, 20).map((i) => {
-    const dur = i.end ? Math.round((i.end - i.start) / 60) + " min" : "ongoing";
-    return `<li><b>${i.p.toUpperCase()}</b> down — ${new Date(i.start * 1000).toLocaleString()} · ${dur}</li>`;
-  }).join("");
-}
-
-// ---- exit IP rotation tracking -------------------------------------------
-// Groups consecutive checks with the same exit IP into a "held" segment.
-// Rotation time is approximate: we only know the IP changed sometime between
-// two checks (±cron interval), not the exact second it rotated.
-function ipSegments(history, proto) {
-  const rows = history.filter((r) => r.proto === proto && r.ip).sort((a, b) => a.t - b.t);
-  const segs = [];
-  for (const r of rows) {
-    const last = segs[segs.length - 1];
-    if (last && last.ip === r.ip) last.end = r.t;
-    else segs.push({ ip: r.ip, start: r.t, end: r.t });
-  }
-  return segs;
-}
-function fmtDuration(sec) {
-  if (sec == null) return "—";
-  const m = Math.round(sec / 60);
-  if (m < 60) return `${m}m`;
-  return `${Math.floor(m / 60)}h ${m % 60}m`;
-}
-function renderIpRotation(history) {
-  for (const p of PROTOS) {
-    const segs = ipSegments(history, p);
-    const statsEl = $(`ip-stats-${p}`);
-    const logEl = $(`ip-log-${p}`);
-    if (!segs.length) {
-      statsEl.innerHTML = `<div><span>Exit IPs seen</span><b>—</b></div>`;
-      logEl.innerHTML = `<li class="muted">No exit-IP data yet.</li>`;
-      continue;
-    }
-    const nowS = Date.now() / 1000;
-    const current = segs[segs.length - 1];
-    const heldFor = nowS - current.start;
-    // average time between rotations, based on observed segment starts (excludes the current, possibly still-open, segment)
-    let avgRotation = null;
-    if (segs.length >= 2) {
-      const gaps = [];
-      for (let i = 1; i < segs.length; i++) gaps.push(segs[i].start - segs[i - 1].start);
-      avgRotation = gaps.reduce((a, b) => a + b, 0) / gaps.length;
-    }
-    statsEl.innerHTML = [
-      ["Current exit IP", current.ip],
-      ["Held for", fmtDuration(heldFor)],
-      ["Avg rotation interval", segs.length >= 2 ? fmtDuration(avgRotation) : "need 2+ rotations"],
-      ["Rotations observed (30d)", segs.length - 1],
-    ].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
-    const recent = segs.slice(0, -1).slice(-10).reverse();
-    logEl.innerHTML = recent.length
-      ? recent.map((s) => `<li><span>${new Date(s.start * 1000).toLocaleString()}</span><b>${s.ip} · held ${fmtDuration(s.end - s.start)}</b></li>`).join("")
-      : `<li class="muted">No rotations observed yet — same IP since tracking began.</li>`;
-  }
-}
-function renderUsage(history) {
-  const now = new Date();
-  const dayKey = now.toISOString().slice(0, 10);
-  const monKey = now.toISOString().slice(0, 7);
-  let today = 0, month = 0, tc = 0, mc = 0;
-  for (const r of history) {
-    const iso = new Date(r.t * 1000).toISOString();
-    if (iso.slice(0, 10) === dayKey) { today += r.bytes || 0; tc++; }
-    if (iso.slice(0, 7) === monKey) { month += r.bytes || 0; mc++; }
-  }
-  $("today-usage").textContent = fmtBytes(today);
-  $("today-split").textContent = `${tc} checks`;
-  $("month-usage").textContent = fmtBytes(month);
-  $("month-split").textContent = `${mc} checks`;
-  $("checks-count").textContent = history.length;
-}
 
 // ---- charts -------------------------------------------------------------
 let charts = {};
-// Category x-axis (formatted time labels) — avoids needing a Chart.js date adapter.
-function lineChart(canvasId, labels, byProto, field) {
+function lineChart(canvasId, labels, byProto) {
   if (!window.Chart) return;
   const colors = { http: "#4f8cff", socks5: "#22c55e" };
   const cfg = {
@@ -205,9 +160,8 @@ function lineChart(canvasId, labels, byProto, field) {
   else charts[canvasId] = new Chart($(canvasId), cfg);
 }
 function renderCharts(history) {
-  // Build a shared timeline from the union of timestamps (HTTP & SOCKS5 share each run's t).
   const ts = [...new Set(history.map((r) => r.t))].sort((a, b) => a - b).slice(-150);
-  const labels = ts.map((t) => new Date(t * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }));
+  const labels = ts.map((t) => new Date(t * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }));
   const idx = new Map(ts.map((t, i) => [t, i]));
   const series = (field) => {
     const out = {};
@@ -217,11 +171,11 @@ function renderCharts(history) {
     }
     return out;
   };
-  lineChart("chart-dl", labels, series("dl"), "dl");
-  lineChart("chart-ul", labels, series("ul"), "ul");
+  lineChart("chart-dl", labels, series("dl"));
+  lineChart("chart-ul", labels, series("ul"));
 }
 
-// ---- on-demand results --------------------------------------------------
+// ---- on-demand tests ---------------------------------------------------------
 function table(rows) {
   return `<table>${rows.map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("")}</table>`;
 }
@@ -241,27 +195,48 @@ function renderOndemand(kind, data) {
   }).join("");
   el.innerHTML = `<div class="muted" style="margin-bottom:6px">${ago(data.t)}</div>${blocks}`;
 }
-
-// ---- buttons ------------------------------------------------------------
-document.querySelectorAll(".btn.run").forEach((b) => (b.href = RUN_URL));
+async function runOndemand(kind, btn) {
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Running… (this can take up to ~2 min)";
+  try {
+    const result = await apiPost(`/api/run/${kind}`);
+    if (result.error === "cooldown") {
+      $(`res-${kind}`).innerHTML = `<span class="muted">Just ran — try again in ${result.retry_in_sec}s.</span>`;
+    } else {
+      renderOndemand(kind, result);
+    }
+  } catch (e) {
+    $(`res-${kind}`).innerHTML = `<span class="muted">Request failed: ${e.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+}
+document.querySelectorAll(".btn.run").forEach((b) => {
+  b.addEventListener("click", () => runOndemand(b.dataset.test, b));
+});
 $("refresh").addEventListener("click", load);
 
 // ---- main ---------------------------------------------------------------
 async function load() {
   try {
-    const [latest, history] = await Promise.all([
-      getJSON("data/latest.json").catch(() => null),
-      getLines("data/history.jsonl"),
+    const [latest, summary, history] = await Promise.all([
+      apiGet("/api/latest").catch(() => null),
+      apiGet("/api/summary").catch(() => null),
+      apiGet("/api/history?limit=200").catch(() => []),
     ]);
     renderStatus(latest);
-    renderUptime(history);
+    if (summary) {
+      renderUptime(summary);
+      renderIncidents(summary);
+      renderIpRotation(summary);
+      renderUsage(summary);
+    }
     renderTimeline(history);
-    renderIncidents(history);
-    renderIpRotation(history);
-    renderUsage(history);
     renderCharts(history);
     for (const k of ["session", "concurrency", "streaming"]) {
-      const d = await getJSON(`data/${k}.json`).catch(() => null);
+      const d = await apiGet(`/api/${k}`).catch(() => null);
       renderOndemand(k, d);
     }
   } catch (e) {
@@ -270,7 +245,7 @@ async function load() {
   }
 }
 
-// Started by lock.js once the password gate is passed (no data is fetched before then).
+// Started by lock.js once login succeeds (no data is fetched before then).
 let started = false;
 window.startDashboard = function () {
   if (started) return;

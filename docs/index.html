@@ -78,13 +78,13 @@
     <section class="grid four">
       <article class="card mini"><span class="mini-label">Today (test data used)</span><span class="mini-value" id="today-usage">—</span><span class="mini-sub" id="today-split"></span></article>
       <article class="card mini"><span class="mini-label">This Month</span><span class="mini-value" id="month-usage">—</span><span class="mini-sub" id="month-split"></span></article>
-      <article class="card mini"><span class="mini-label">Checks (30d)</span><span class="mini-value" id="checks-count">—</span><span class="mini-sub">monitor runs</span></article>
+      <article class="card mini"><span class="mini-label">Checks (retained)</span><span class="mini-value" id="checks-count">—</span><span class="mini-sub">monitor runs</span></article>
       <article class="card mini"><span class="mini-label">Bandwidth cap</span><span class="mini-value">5</span><span class="mini-sub">Mbps (plan limit)</span></article>
     </section>
 
     <!-- Downtime history -->
     <section class="card">
-      <div class="card-head"><h2>Downtime history</h2><span class="hint">last 30 days · each cell = one check</span></div>
+      <div class="card-head"><h2>Downtime history</h2><span class="hint">most recent checks · each cell = one check</span></div>
       <div class="legend"><span class="dot up"></span>up <span class="dot down"></span>down <span class="dot none"></span>no data</div>
       <h3 class="tl-title">HTTP</h3><div class="timeline" id="tl-http"></div>
       <h3 class="tl-title">SOCKS5</h3><div class="timeline" id="tl-socks5"></div>
@@ -117,32 +117,32 @@
 
     <!-- On-demand tests -->
     <section class="card">
-      <div class="card-head"><h2>On-demand tests</h2><span class="hint">click Run → GitHub runs it → results appear here in ~1 min</span></div>
+      <div class="card-head"><h2>On-demand tests</h2><span class="hint">runs directly against your backend — results appear in place</span></div>
       <div class="grid three">
         <article class="card sub" id="t-session">
           <h3>Session test</h3>
           <p class="desc">N sequential requests — success rate, latency, exit-IP stability.</p>
           <div class="result" id="res-session"><span class="muted">No run yet.</span></div>
-          <a class="btn run" data-test="session" target="_blank" rel="noopener">▶ Run session test</a>
+          <button type="button" class="btn run" data-test="session">▶ Run session test</button>
         </article>
         <article class="card sub" id="t-concurrency">
           <h3>Concurrency test</h3>
           <p class="desc">N parallel sessions — success rate, aggregate &amp; per-session throughput.</p>
           <div class="result" id="res-concurrency"><span class="muted">No run yet.</span></div>
-          <a class="btn run" data-test="concurrency" target="_blank" rel="noopener">▶ Run concurrency test</a>
+          <button type="button" class="btn run" data-test="concurrency">▶ Run concurrency test</button>
         </article>
         <article class="card sub" id="t-streaming">
           <h3>Streaming / video test</h3>
           <p class="desc">Sustained pull — avg/min Mbps and stall (buffering) count.</p>
           <div class="result" id="res-streaming"><span class="muted">No run yet.</span></div>
-          <a class="btn run" data-test="streaming" target="_blank" rel="noopener">▶ Run streaming test</a>
+          <button type="button" class="btn run" data-test="streaming">▶ Run streaming test</button>
         </article>
       </div>
-      <p class="note">On-demand tests open GitHub's “Run workflow” page (a public page can't trigger a run without exposing a secret). Pick the matching test type and click <b>Run workflow</b>.</p>
+      <p class="note">Each test runs live on your backend when clicked (up to ~2 min for concurrency/streaming) and updates the card in place. A 30s cooldown per test prevents accidental spamming.</p>
     </section>
 
     <footer>
-      <span>Measured independently via GitHub Actions · not affiliated with the proxy provider's portal figures.</span>
+      <span>Measured independently by a small backend you run · not affiliated with the proxy provider's portal figures.</span>
     </footer>
   </main>
   </div>

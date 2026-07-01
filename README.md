@@ -1,112 +1,105 @@
 # Proxy Uptime Monitor
 
-A tiny, **backend-free** uptime & performance monitor for a proxy's **HTTP** and **SOCKS5**
-gateways. Everything runs on **GitHub Actions** (free) and a **static GitHub Pages** dashboard —
-no server, no database, no paid API.
+A real-time uptime & performance monitor for a proxy's **HTTP** and **SOCKS5** gateways,
+tracked completely independently. A small backend (that you run) checks continuously —
+every 5-30 seconds — and a static dashboard on GitHub Pages polls it live.
 
 It routes real `curl` traffic *through* each proxy (separately) and measures:
 
 - **Uptime** — reachability via the proxy's own exit, tracked independently for HTTP and SOCKS5
-- **Live(-ish) speed** — download / upload Mbps (last measured, refreshed every few minutes)
+- **Live speed** — download / upload Mbps, refreshed every `REFRESH_MS` (10s by default)
+- **Accurate downtime** — since checks run continuously, "down for 17 minutes" is a real
+  measured duration, not a gap between two far-apart snapshots
 - **Latency** — connect / TTFB / total
-- **Downtime history** — 30-day timeline + incident list
-- **On-demand tests** — session, concurrency, and streaming/"video" tests, run on a click
+- **Exit IP rotation** — current IP, how long it's been held, observed rotation interval
+- **On-demand tests** — session, concurrency, and streaming/"video" tests, run live on click
 
-> **Honest limits.** GitHub cron has a 5-minute floor and is best-effort, so "live" means
-> *last measured, auto-refreshed ~every few minutes* — not a continuous meter. Portal figures
-> (Sessions, Connections, Assigned Proxies, portal "Today Usage") live inside the proxy provider's
-> own customer portal and need its login/API; this dashboard shows **independently measured**
-> equivalents only.
+> Portal figures (Sessions, Connections, Assigned Proxies, portal "Today Usage") live inside the
+> proxy provider's own customer portal and need its login/API; this dashboard shows
+> **independently measured** equivalents only.
 
 ---
 
 ## How it works
 
 ```
-GitHub Actions (cron + manual)  →  scripts/monitor.sh  →  curl through HTTP & SOCKS5
-        │                                                   (Cloudflare/ipify test endpoints)
+backend/server.js (your always-on server)  →  curl through HTTP & SOCKS5, every 5-30s
+        │                                       (Cloudflare/ipify test endpoints)
         ▼
-   docs/data/*.json   (committed back by the workflow with the built-in GITHUB_TOKEN)
+  in-memory + local JSON (no git commits, no GitHub Actions)
         ▼
-GitHub Pages (/docs)  →  static dashboard fetches the JSON and renders it
+Tailscale Funnel (public HTTPS URL, no static IP needed)
+        ▼
+GitHub Pages (/docs)  →  static dashboard polls the backend's API directly and renders it
 ```
 
-- **`scripts/monitor.sh`** — all test logic. Modes: `quick` (cron), `session`, `concurrency`, `streaming`.
-- **`.github/workflows/monitor.yml`** — runs the script, commits results. Cron runs `quick`; the
-  manual *Run workflow* button runs whichever test you pick.
-- **`docs/`** — the static dashboard (`index.html` / `style.css` / `app.js`) + `docs/data/` JSON.
+**Why a backend, and why this replaces GitHub Actions:** this project originally ran entirely on
+GitHub Actions cron + committed JSON files. Real measurement showed GitHub's `schedule:` trigger
+firing only ~8 times over 18 hours instead of the configured every-10-minutes — it drops the vast
+majority of ticks at short intervals, a hard platform limit, not a bug in the workflow. That also
+made downtime duration inherently inaccurate (you can only know "down sometime between check N and
+N+1", never a real number). A small always-on process removes both problems at once: continuous
+checking isn't gated by any scheduler, and state transitions are timestamped to the second.
+`.github/workflows/monitor.yml` still exists but its cron is disabled — nothing reads its output anymore.
+
+- **`backend/server.js`** — the whole backend. Zero npm dependencies. See `backend/README.md` for
+  setup, the systemd unit, and the Tailscale Funnel command.
+- **`docs/`** — the static dashboard (`index.html` / `style.css` / `app.js` / `lock.js`). Polls the
+  backend's API instead of reading files out of the repo.
+- **`scripts/monitor.sh`** — the original Actions-only implementation. No longer wired up, kept for
+  reference / as a fallback if you ever want to go back to the git-committed-JSON approach.
 
 ---
 
-## Setup (one-time)
+## Setup
 
-You must do these — they can't be automated from here:
+1. **Run the backend** on a machine that can reach your proxy — see **`backend/README.md`** for
+   the full walkthrough (`.env` config, systemd unit, `tailscale funnel` command).
 
-1. **Make the repo public** (unlimited free Actions minutes; private repos cap at 2,000/month).
+2. **Point the dashboard at it** — edit `docs/app.js`:
+   ```js
+   const API_BASE = "https://your-machine.your-tailnet.ts.net";
+   ```
+   Commit and push; GitHub Pages redeploys automatically.
 
-2. **Add repository secrets** — Settings → Secrets and variables → Actions → *New repository secret*:
-   | Secret | Value |
-   |---|---|
-   | `PROXY_HOST` | your proxy hostname (e.g. `proxy.example.com`) |
-   | `PROXY_HTTP_PORT` | your HTTP proxy port |
-   | `PROXY_SOCKS_PORT` | your SOCKS5 proxy port |
-   | `PROXY_USER` | your proxy username |
-   | `PROXY_PASS` | your proxy password |
-   | `PAGE_PASSWORD` | the password to view the dashboard |
-
-   Nothing proxy-identifying is committed to the repo — host, ports, and credentials all live
-   in secrets and are only ever read inside the workflow run. `PAGE_PASSWORD`'s plaintext is
-   never committed either — the workflow turns it into a SHA-256 hash (`docs/data/lock-hash.json`)
-   that the page compares against client-side.
-
-   > **Limitation, please read.** GitHub Pages serves every file in `docs/` publicly with no
-   > per-file access control. This password gate hides the dashboard *UI* from casual visitors
-   > and search engines, but someone who knows/guesses a path like `.../data/latest.json` can
-   > still fetch the raw measured data directly — the lock can't intercept that on static
-   > hosting. Your proxy credentials are never exposed either way (they only ever live in
-   > secrets/Actions). If you need the *data* itself to be private, that requires either a
-   > private repo on a paid GitHub plan (Pages on private repos isn't on the free tier) or a
-   > small authenticated backend — both go beyond the "free, no backend" goal of this project.
-
-3. **Enable GitHub Pages** — Settings → Pages → *Deploy from a branch* → branch
+3. **Enable GitHub Pages** (if not already) — Settings → Pages → *Deploy from a branch* → branch
    `claude/turboproxy-uptime-monitor-bgqjwe` (or `main` after merge), folder `/docs`.
 
-4. **Seed the data** — Actions tab → *Proxy Monitor* → *Run workflow* → `quick`.
-   After it finishes, open your Pages URL and enter the password.
+4. Open the Pages URL and enter the password you set as `PAGE_PASSWORD` in `backend/.env`.
 
-   If you ever change `PAGE_PASSWORD`, re-run the workflow once to refresh the hash —
-   until then the old password keeps working.
+### Auth, for real this time
 
-5. **(Optional) edit `REPO` in `docs/app.js`** if the repo path changes — it's only used for the
-   on-demand "Run workflow" deep links.
+Unlike the old GitHub-Pages-only version (where the "lock" only hid the UI — the underlying
+`docs/data/*.json` files were still publicly fetchable by direct URL, since static hosting has no
+per-file access control), the backend now verifies the password itself and requires it as a Bearer
+token on every API call. The data is actually protected, not just the page.
 
 ---
 
-## Running tests on demand
+## On-demand tests
 
-The dashboard's **Run** buttons open the workflow's *Run workflow* page on GitHub. Pick the test
-type (`session` / `concurrency` / `streaming`) and click **Run workflow**. Results commit back and
-appear on the dashboard within ~1 minute (it auto-refreshes).
-
-> A public web page can't trigger a workflow without exposing a secret token, so the buttons
-> deep-link to GitHub's built-in trigger instead of firing directly. That's the only safe free option.
+Click a **Run** button on the dashboard — it POSTs straight to your backend, which runs the test
+immediately and returns the result (no GitHub Actions round-trip, no ~1 minute wait). A 30s
+cooldown per test type prevents accidental spamming of your own proxy.
 
 | Test | What it measures |
 |---|---|
-| **quick** | reachability, latency, download/upload speed (runs automatically on cron) |
+| *(continuous)* | reachability, latency, download/upload speed — runs every `CHECK_INTERVAL_SEC` |
 | **session** | N sequential requests — success rate, latency spread, exit-IP stability |
 | **concurrency** | N parallel sessions — success rate, aggregate & per-session throughput |
 | **streaming** | sustained pull over a window — avg/min Mbps and stall (buffering) count |
 
-Tune sizes/counts via env in `.github/workflows/monitor.yml` (e.g. `CONC_N`, `STREAM_SECONDS`).
+Tune sizes/counts via the constants near the top of `backend/server.js` (`CFG` object).
 
 ---
 
 ## Local testing
 
 ```bash
-export PROXY_HOST=... PROXY_HTTP_PORT=... PROXY_SOCKS_PORT=... PROXY_USER=... PROXY_PASS=...
-bash scripts/monitor.sh quick      # writes docs/data/latest.json + appends history.jsonl
+cd backend
+cp .env.example .env   # fill in proxy host/ports/creds + PAGE_PASSWORD
+node server.js
+curl -X POST -H 'Content-Type: application/json' -d '{"password":"..."}' http://localhost:8787/api/login
 ```
 
-Requires `curl` (with SOCKS5 support — standard) and `jq`.
+Requires Node.js 18+ and `curl` (with SOCKS5 support — standard). No `npm install` needed.

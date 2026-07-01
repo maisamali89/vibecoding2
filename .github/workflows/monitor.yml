@@ -1,9 +1,16 @@
 name: Proxy Monitor
 
+# SUPERSEDED by backend/server.js as of the always-on backend + Tailscale
+# Funnel setup. Real-world measurement showed GitHub's `schedule:` trigger
+# firing only ~8 times over 18 hours instead of the configured every-10-min
+# (it drops the large majority of ticks at short intervals) - a hard
+# platform limit, not fixable from this workflow. The backend replaces this
+# entirely: docs/app.js now polls it directly instead of reading
+# docs/data/*.json, so this workflow's cron is disabled below. Kept as a
+# manual (workflow_dispatch) fallback only; nothing currently reads its output.
 on:
-  schedule:
-    # ~every 10 min, offset from the top of the hour (GitHub cron is best-effort).
-    - cron: "7,17,27,37,47,57 * * * *"
+  # schedule:
+  #   - cron: "7,17,27,37,47,57 * * * *"
   workflow_dispatch:
     inputs:
       test_type:
